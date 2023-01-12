@@ -539,6 +539,44 @@ class PluginMethods implements IPlugin.IPluginInstanceMethods {
             return null;
         }
     }
+    /** 获取榜单 */
+    async getTopLists(): Promise<IMusic.IMusicTopListGroupItem[]> {
+        try {
+            const result = await this.plugin.instance?.getTopLists?.();
+            if (!result) {
+                throw new Error();
+            }
+            return result;
+        } catch (e: any) {
+            devLog('error', '获取榜单失败', e, e?.message);
+            return [];
+        }
+    }
+    /** 获取榜单详情 */
+    async getTopListDetail(
+        topListItem: IMusic.IMusicTopListItem,
+    ): Promise<ICommon.WithMusicList<IMusic.IMusicTopListItem>> {
+        try {
+            const result = await this.plugin.instance?.getTopListDetail?.(
+                topListItem,
+            );
+            if (!result) {
+                throw new Error();
+            }
+            if (result.musicList) {
+                result.musicList.forEach(_ =>
+                    resetMediaItem(_, this.plugin.name),
+                );
+            }
+            return result;
+        } catch (e: any) {
+            devLog('error', '获取榜单详情失败', e, e?.message);
+            return {
+                ...topListItem,
+                musicList: [],
+            };
+        }
+    }
 }
 //#endregion
 
@@ -803,6 +841,20 @@ function getSortedSearchablePlugins() {
     );
 }
 
+function getTopListsablePlugins() {
+    return plugins.filter(_ => _.state === 'enabled' && _.instance.getTopLists);
+}
+
+function getSortedTopListsablePlugins() {
+    return getTopListsablePlugins().sort((a, b) =>
+        (PluginMeta.getPluginMeta(a).order ?? Infinity) -
+            (PluginMeta.getPluginMeta(b).order ?? Infinity) <
+        0
+            ? -1
+            : 1,
+    );
+}
+
 function useSortedPlugins() {
     const _plugins = pluginStateMapper.useMappedState();
     const _pluginMetaAll = PluginMeta.usePluginMetaAll();
@@ -846,6 +898,8 @@ const PluginManager = {
     getValidPlugins,
     getSearchablePlugins,
     getSortedSearchablePlugins,
+    getTopListsablePlugins,
+    getSortedTopListsablePlugins,
     usePlugins: pluginStateMapper.useMappedState,
     useSortedPlugins,
     uninstallAllPlugins,
